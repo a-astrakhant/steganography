@@ -300,8 +300,12 @@ class Compare():
         return signal.correlate2d(img1, img2)
 
     def meanSquareError(self, img1, img2):
-        error = np.sum((img1.astype('float') - img2.astype('float')) ** 2)
-        error /= float(img1.shape[0] * img1.shape[1])
+        # NMSE
+        for i in range(len(img1)):
+            for j in range(len(img1[0])):
+                error = (np.sum(img1[i, j] - img2[i, j]))**2/(np.sum(img1[i, j])**2)
+        #error = np.sum((img1.astype('float') - img2.astype('float')) ** 2)
+        #error /= float(img1.shape[0] * img1.shape[1])
         return error
 
     def psnr(self, img1, img2):
