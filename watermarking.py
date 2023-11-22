@@ -179,7 +179,8 @@ class DCT():
         messageBits = []
         buff = 0
         #split image into RGB channels
-        bImg,gImg,rImg = cv2.split(img)
+        temp = cv2.split(img)
+        bImg,gImg,rImg = temp
          #message hid in blue channel so converted to type float32 for dct function
         bImg = np.float32(bImg)
         #break into 8x8 blocks
@@ -316,12 +317,17 @@ class Compare():
         return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
     def nad(self, img1, img2):
-        nad = np.sum(np.abs(img1.astype('float') - img2.astype('float')))/np.sum(np.abs(img1.astype('float')))
+        #nad = np.sum(np.abs(img1.astype('float') - img2.astype('float')))/np.sum(np.abs(img1.astype('float')))
+        for i in range(len(img1)):
+            for j in range(len(img1[0])):
+                nad = abs(np.sum(img1[i, j] - img2[i, j]))/abs(np.sum(img1[i, j]))
         return nad
 
-    def im_f(self, img1, img2):
-        imf = (1 - np.sum((img1.astype('float') - img2.astype('float')) ** 2))/(1 - np.sum(img1.astype('float') ** 2))
-        return imf
+    def normalized_correlation(self, img1, img2):
+        for i in range(len(img1)):
+            for j in range(len(img1[0])):
+                nc = (np.sum(img1[i, j] * img2[i, j]))/(np.sum(img1[i, j])**2)
+        return nc
 
 #driver part :
 #deleting previous folders :
@@ -368,7 +374,7 @@ while True:
 
     elif m == "2":
         os.chdir("Encoded_image/")
-        lsb_img = Image.open(lsb_encoded_image_file)
+        lsb_img = Image.open(Path(lsb_encoded_image_file))
         dct_img = cv2.imread(dct_encoded_image_file, cv2.IMREAD_UNCHANGED)
 #        dwt_img = cv2.imread(dwt_encoded_image_file, cv2.IMREAD_UNCHANGED)
         os.chdir("..") #going back to parent directory
@@ -397,7 +403,7 @@ while True:
         dctEncoded = cv2.imread(dct_encoded_image_file)
 #        dwtEncoded = cv2.imread(dwt_encoded_image_file)
         original = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
-        lsb_encoded_img = cv2.cvtColor(lsbEncoded, cv2.COLOR_BGR2RGB)
+        lsb_encoded_img = cv2.cvtColor(lsbEncoded, cv2.COLOR_BGR2RGB)   #???????
         dct_encoded_img = cv2.cvtColor(dctEncoded, cv2.COLOR_BGR2RGB)
 #        dwt_encoded_img = cv2.cvtColor(dwtEncoded, cv2.COLOR_BGR2RGB)
         os.chdir("..")
@@ -408,22 +414,25 @@ while True:
         style_string = "font: bold on , color red; borders: bottom dashed"
         style = xlwt.easyxf(style_string)
         sheet1.write(0, 0, "Original vs", style=style)
-        sheet1.write(0, 1, "MSE", style=style)
-        sheet1.write(0, 2, "PSNR", style=style)
-        sheet1.write(0, 3, "NAD", style=style)   #new one
-        sheet1.write(0, 4, "Correlation", style=style)   #new one
+        sheet1.write(0, 1, "Correlation", style=style)   #new one
+        sheet1.write(0, 2, "NMSE", style=style)
+        sheet1.write(0, 3, "PSNR", style=style)
+        sheet1.write(0, 4, "NAD", style=style)   #new one
+        sheet1.write(0, 5, "Normalized Cross-Correlation", style=style)   #new one
 
         sheet1.write(1, 0, "LSB")
-        sheet1.write(1, 1, Compare().meanSquareError(original, lsb_encoded_img))
-        sheet1.write(1, 2, Compare().psnr(original, lsb_encoded_img))
-        sheet1.write(1, 3, Compare().nad(original, lsb_encoded_img))
-       # sheet1.write(1, 3, Compare().correlation(original, lsb_encoded_img))
+        #sheet1.write(1, 1, Compare().correlation(original, lsb_encoded_img))
+        sheet1.write(1, 2, Compare().meanSquareError(original, lsb_encoded_img))
+        sheet1.write(1, 3, Compare().psnr(original, lsb_encoded_img))
+        sheet1.write(1, 4, Compare().nad(original, lsb_encoded_img))
+        sheet1.write(1, 5, Compare().normalized_correlation(original, lsb_encoded_img))
 
         sheet1.write(2, 0, "DCT")
-        sheet1.write(2, 1, Compare().meanSquareError(original, dct_encoded_img))
-        sheet1.write(2, 2, Compare().psnr(original, dct_encoded_img))
-        sheet1.write(2, 3, Compare().nad(original, dct_encoded_img))
-       # sheet1.write(2, 4, Compare().correlation(original, lsb_encoded_img))
+        #sheet1.write(1, 1, Compare().correlation(original, dct_encoded_img))
+        sheet1.write(2, 2, Compare().meanSquareError(original, dct_encoded_img))
+        sheet1.write(2, 3, Compare().psnr(original, dct_encoded_img))
+        sheet1.write(2, 4, Compare().nad(original, dct_encoded_img))
+        sheet1.write(2, 5, Compare().normalized_correlation(original, dct_encoded_img))
 
         sheet1.write(3, 0, "DWT")
 #        sheet1.write(3, 1, Compare().meanSquareError(original, dwt_encoded_img))
