@@ -5,9 +5,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import sewar
+import skimage.metrics
 import xlwt
 from PIL import Image
 from scipy import signal
+from sewar.full_ref import mse, rmse, psnr, uqi, ssim, ergas, scc, rase, sam, msssim, vifp
+from skimage.metrics import structural_similarity as ssim
+import matplotlib.pyplot as plt
 
 from dct import DCT
 from dwt import DWT
@@ -26,37 +31,33 @@ comparison_result_dir_path: Path = Path("Comparison_result").resolve()
 
 
 class Compare:
-    def correlation(self, img1, img2):
-        return signal.correlate2d(img1, img2)
-
-    def mean_square_error(self, img1, img2):
-        # NMSE
-        for i in range(len(img1)):
-            for j in range(len(img1[0])):
-                error = (np.sum(img1[i, j] - img2[i, j])) ** 2 / (np.sum(img1[i, j]) ** 2)
-        # error = np.sum((img1.astype('float') - img2.astype('float')) ** 2)
-        # error /= float(img1.shape[0] * img1.shape[1])
+    def mean_square_error(self, img1, img2):        # READY
+        error = np.sum((img1.astype('float') - img2.astype('float')) ** 2)
+        error /= float(img1.shape[0] * img1.shape[1])
         return error
 
-    def psnr(self, img1, img2):
+    def psnr(self, img1, img2):    # READY
         mse = self.mean_square_error(img1, img2)
         if mse == 0:
             return 100
         PIXEL_MAX = 255.0
         return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
-    def nad(self, img1, img2):
-        # nad = np.sum(np.abs(img1.astype('float') - img2.astype('float')))/np.sum(np.abs(img1.astype('float')))
-        for i in range(len(img1)):
-            for j in range(len(img1[0])):
-                nad = abs(np.sum(img1[i, j] - img2[i, j])) / abs(np.sum(img1[i, j]))
-        return nad
+    def Visual_Information_Fidelity(self, img1, img2):
+        vif = sewar.vifp(img1, img2)
+        return vif
 
-    def normalized_correlation(self, img1, img2):
-        for i in range(len(img1)):
-            for j in range(len(img1[0])):
-                nc = (np.sum(img1[i, j] * img2[i, j])) / (np.sum(img1[i, j]) ** 2)
-        return nc
+    def Spatial_Correlation_Coefficient(self, img1, img2):
+        scc = sewar.scc(img1, img2)
+        return scc
+
+    def Universal_Quality_Image_Index(self, img1, img2):    # READY
+        # https://pyimagesearch.com/2014/09/15/python-compare-two-images/
+        # https://towardsdatascience.com/measuring-similarity-in-two-images-using-python-b72233eb53c6
+        #ssim = skimage.metrics.structural_similarity(img1,img2)
+
+        uqi = sewar.uqi(img1, img2)
+        return uqi
 
 
 # driver part :
@@ -141,25 +142,25 @@ while True:
         style_string = "font: bold on , color red; borders: bottom dashed"
         style = xlwt.easyxf(style_string)
         sheet1.write(0, 0, "Original vs", style=style)
-        sheet1.write(0, 1, "Correlation", style=style)  # new one
-        sheet1.write(0, 2, "NMSE", style=style)
-        sheet1.write(0, 3, "PSNR", style=style)
-        sheet1.write(0, 4, "NAD", style=style)  # new one
-        sheet1.write(0, 5, "Normalized Cross-Correlation", style=style)  # new one
+        sheet1.write(0, 1, "MSE", style=style)
+        sheet1.write(0, 2, "PSNR", style=style)
+        sheet1.write(0, 3, "VIF", style=style)  # new one
+        sheet1.write(0, 4, "Correlation", style=style)  # new one
+        sheet1.write(0, 5, "Quality_Image", style=style)  # new one
 
         sheet1.write(1, 0, "LSB")
-        # sheet1.write(1, 1, Compare().correlation(original, lsb_encoded_img))
-        sheet1.write(1, 2, Compare().mean_square_error(original_img, lsb_encoded_img))
-        sheet1.write(1, 3, Compare().psnr(original_img, lsb_encoded_img))
-        sheet1.write(1, 4, Compare().nad(original_img, lsb_encoded_img))
-        sheet1.write(1, 5, Compare().normalized_correlation(original_img, lsb_encoded_img))
+        sheet1.write(1, 1, Compare().mean_square_error(original_img, lsb_encoded_img))
+        sheet1.write(1, 2, Compare().psnr(original_img, lsb_encoded_img))
+        sheet1.write(1, 3, Compare().Visual_Information_Fidelity(original_img, lsb_encoded_img))
+        sheet1.write(1, 4, Compare().Spatial_Correlation_Coefficient(original_img, lsb_encoded_img))
+        sheet1.write(1, 5, Compare().Universal_Quality_Image_Index(original_img, lsb_encoded_img))
 
         sheet1.write(2, 0, "DCT")
-        # sheet1.write(1, 1, Compare().correlation(original, dct_encoded_img))
-        sheet1.write(2, 2, Compare().mean_square_error(original_img, dct_encoded_img))
-        sheet1.write(2, 3, Compare().psnr(original_img, dct_encoded_img))
-        sheet1.write(2, 4, Compare().nad(original_img, dct_encoded_img))
-        sheet1.write(2, 5, Compare().normalized_correlation(original_img, dct_encoded_img))
+        sheet1.write(2, 1, Compare().mean_square_error(original_img, dct_encoded_img))
+        sheet1.write(2, 2, Compare().psnr(original_img, dct_encoded_img))
+        sheet1.write(2, 3, Compare().Visual_Information_Fidelity(original_img, dct_encoded_img))
+        sheet1.write(2, 4, Compare().Spatial_Correlation_Coefficient(original_img, dct_encoded_img))
+        sheet1.write(2, 5, Compare().Universal_Quality_Image_Index(original_img, dct_encoded_img))
 
         sheet1.write(3, 0, "DWT")
         # sheet1.write(3, 1, Compare().meanSquareError(original, dwt_encoded_img))

@@ -4,6 +4,7 @@ import matplotlib.image as img
 import numpy as np
 from PIL import Image
 from pathlib import Path
+from watermarking import Compare
 
 lsb_lenna_path: Path = Path(__file__).parent / "Encoded_image" / "lsb_lenna.png"
 dct_lenna_path: Path = Path(__file__).parent / "Encoded_image" / "dct_lenna.png"
@@ -49,3 +50,11 @@ pil_img_with_zavada1 = Image.fromarray((img_with_zavada1 * 255).astype(np.uint8)
 pil_img_with_zavada1.save(lsb_noised_path)
 pil_img_with_zavada2 = Image.fromarray((img_with_zavada2 * 255).astype(np.uint8))
 pil_img_with_zavada2.save(dct_noised_path)
+
+print(Compare.mean_square_error(img1=lsb_lenna_path, img2=lsb_noised_path))
+Compare.
+sheet1.write(1, 1, Compare().mean_square_error(original_img, lsb_encoded_img))
+sheet1.write(1, 2, Compare().psnr(original_img, lsb_encoded_img))
+sheet1.write(1, 3, Compare().Visual_Information_Fidelity(original_img, lsb_encoded_img))
+sheet1.write(1, 4, Compare().Spatial_Correlation_Coefficient(original_img, lsb_encoded_img))
+sheet1.write(1, 5, Compare().Universal_Quality_Image_Index(original_img, lsb_encoded_img))
