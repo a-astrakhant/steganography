@@ -1,22 +1,18 @@
 import math
-import os
 import shutil
 from pathlib import Path
 
 import cv2
 import numpy as np
 import sewar
-import skimage.metrics
 import xlwt
 from PIL import Image
-from scipy import signal
-from sewar.full_ref import mse, rmse, psnr, uqi, ssim, ergas, scc, rase, sam, msssim, vifp
-from skimage.metrics import structural_similarity as ssim
-import matplotlib.pyplot as plt
 
 from dct import DCT
 from dwt import DWT
 from lsb import LSB
+
+import matplotlib.image as img
 
 original_image_dir_path: Path = Path("Original_image").resolve()
 
@@ -54,7 +50,6 @@ class Compare:
     def Universal_Quality_Image_Index(self, img1, img2):    # READY
         # https://pyimagesearch.com/2014/09/15/python-compare-two-images/
         # https://towardsdatascience.com/measuring-similarity-in-two-images-using-python-b72233eb53c6
-        #ssim = skimage.metrics.structural_similarity(img1,img2)
 
         uqi = sewar.uqi(img1, img2)
         return uqi
@@ -84,7 +79,7 @@ dwt_encoded_image_path: Path = encoded_image_dir_path / ("dwt_" + input_original
 
 first_run = True
 while True:
-    input_number = input("To encode press '1', to decode press '2', to compare press '3', press any other button to close: ")
+    input_number = input("To encode press '1', to decode press '2', to compare press '3', to insert noise press 4, press any other button to close: ")
 
     if input_number == "1":
 
@@ -168,6 +163,64 @@ while True:
 
         book.save(comparison_result_dir_path / "Comparison.xls")
         print("Comparison Results were saved as xls file!")
+
+    elif input_number == "4":
+        original = cv2.imread(str(original_image_path))
+        lsb_encoded = cv2.imread(str(lsb_encoded_image_path))
+        dct_encoded = cv2.imread(str(dct_encoded_image_path))
+
+         # Create empty array for storing signal with noise:
+        img_orig_with_zavada = np.empty((len(original), len(original), 3))
+        img_lsb_with_zavada = np.empty((len(lsb_encoded), len(lsb_encoded), 3))
+        img_dct_with_zavada = np.empty((len(dct_encoded), len(dct_encoded), 3))
+
+        # ===================
+        # Channel model AWGN     #0.005 - дисперсія завади
+        # ===================
+        zavada = np.random.uniform(0, 10, size=(len(original), len(original)))
+        for i in range(len(original)):
+            for j in range(len(original[0])):
+                img_orig_with_zavada[i, j] = original[i, j] + zavada[i, j]
+                img_lsb_with_zavada[i, j] = lsb_encoded[i, j] + zavada[i, j]
+                img_dct_with_zavada[i, j] = dct_encoded[i, j] + zavada[i, j]
+
+        for i in range(len(original)):
+            for j in range(len(original[0])):
+                for k in range(3):
+                    if img_orig_with_zavada[i, j, k] > 1:
+                        img_orig_with_zavada[i, j, k] = 1
+                    if img_lsb_with_zavada[i, j, k] > 1:
+                        img_lsb_with_zavada[i, j, k] = 1
+                    if img_dct_with_zavada[i, j, k] > 1:
+                        img_dct_with_zavada[i, j, k] = 1
+
+        # # matplotlib always saves as RGBA png image:
+        # # https://stackoverflow.com/a/45594478/8463690
+        # pil_img_with_zavada1 = Image.fromarray((img_with_zavada1 * 255).astype(np.uint8))
+        # pil_img_with_zavada1.save(lsb_noised_path)
+        # pil_img_with_zavada2 = Image.fromarray((img_with_zavada2 * 255).astype(np.uint8))
+        # pil_img_with_zavada2.save(dct_noised_path)
+        obj1 = Compare()
+        print("==========FOR LSB:===============")
+        print("MSE lsb noised = ", obj1.mean_square_error(img1=lsb_encoded, img2=img_lsb_with_zavada))
+        print("PSNR lsb noised = ", obj1.psnr(img1=lsb_encoded, img2=img_lsb_with_zavada))
+        print("VIF lsb noised = ", obj1.Visual_Information_Fidelity(img1=lsb_encoded, img2=img_lsb_with_zavada))
+        print("SCC lsb noised = ", obj1.Spatial_Correlation_Coefficient(img1=lsb_encoded, img2=img_lsb_with_zavada))
+        print("UQI lsb noised = ", obj1.Universal_Quality_Image_Index(img1=lsb_encoded, img2=img_lsb_with_zavada))
+
+        print("==========FOR DCT:===============")
+        print("MSE dct noised = ", obj1.mean_square_error(img1=dct_encoded, img2=img_dct_with_zavada))
+        print("PSNR dct noised = ", obj1.psnr(img1=dct_encoded, img2=img_dct_with_zavada))
+        print("VIF dct noised = ", obj1.Visual_Information_Fidelity(img1=dct_encoded, img2=img_dct_with_zavada))
+        print("SCC dct noised = ", obj1.Spatial_Correlation_Coefficient(img1=dct_encoded, img2=img_dct_with_zavada))
+        print("UQI dct noised = ", obj1.Universal_Quality_Image_Index(img1=dct_encoded, img2=img_dct_with_zavada))
+
+        print("==========FOR ORIGIN:===============")
+        print("MSE dct noised = ", obj1.mean_square_error(img1=original, img2=img_orig_with_zavada))
+        print("PSNR dct noised = ", obj1.psnr(img1=original, img2=img_orig_with_zavada))
+        print("VIF dct noised = ", obj1.Visual_Information_Fidelity(img1=original, img2=img_orig_with_zavada))
+        print("SCC dct noised = ", obj1.Spatial_Correlation_Coefficient(img1=original, img2=img_orig_with_zavada))
+        print("UQI dct noised = ", obj1.Universal_Quality_Image_Index(img1=original, img2=img_orig_with_zavada))
 
     else:
         print("Closed!")
